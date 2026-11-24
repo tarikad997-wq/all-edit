@@ -2,6 +2,7 @@
 import { pipeline, env } from '@huggingface/transformers'
 // يعمل في خيط منفصل حتى لا تتجمد الواجهة أثناء التفريغ
 env.allowLocalModels = false
+;(env.backends.onnx.wasm as any).wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.31.0-dev.20260914-8d85527a0/dist/'
 let asr: any = null, loaded = ''
 const post = (m: unknown) => (self as unknown as Worker).postMessage(m)
 async function load(ids: string[]) {
