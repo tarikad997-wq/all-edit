@@ -66,5 +66,5 @@ export function makeCaptionScene(o: { st: CapStyle; caps: Cap[]; start: number; 
   const io = makeVideoIO(video, file, o.start, o.length, o.mute)
   return { duration: o.length,
     prepare: async () => { await ensureFonts(); await loadFont(o.st.font, o.caps.map(c => c.text).join(' ')); await loadImgs([acc.profileImg, acc.logoImg]); await io.prepare() },
-    draw: (ctx, t) => drawCapFrame(ctx, o.st, acc, io.current(), o.caps, t), play: io.play, seek: io.seek, audioLayers: io.audioLayers }
+    draw: (ctx, t) => drawCapFrame(ctx, o.st, acc, io.current(), o.caps, t), play: io.play, seek: io.seek, audioCopy: io.audioCopy, audioLayers: io.audioLayers }
 }

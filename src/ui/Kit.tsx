@@ -16,7 +16,7 @@ export function Preview({ cref, w, h }: { cref: React.RefObject<HTMLCanvasElemen
 }
 export function PlayerBar({ playing, t, total, onToggle, onSeek }: { playing: boolean; t: number; total: number; onToggle: () => void; onSeek: (v: number) => void }) {
   return <div className="player"><button className="btn primary icon" onClick={onToggle} aria-label="تشغيل/إيقاف">{playing ? '⏸' : '▶'}</button>
-    <input type="range" min="0" max={total || 1} step=".05" value={t} onChange={e => onSeek(+e.target.value)} /><span className="muted num" dir="ltr">{t.toFixed(1)} / {total.toFixed(1)}</span></div>
+    <input type="range" aria-label="موضع التشغيل" min="0" max={total || 1} step=".05" value={t} onChange={e => onSeek(+e.target.value)} /><span className="muted num" dir="ltr">{t.toFixed(1)} / {total.toFixed(1)}</span></div>
 }
 export function ExportBar({ msg, onExport, disabled }: { msg: string; onExport: () => void; disabled?: boolean }) {
   return <div className="stack">

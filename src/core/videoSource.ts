@@ -1,5 +1,5 @@
 import type { Layer } from './audio'
-import { canDecode, decodeMp4 } from './demux'
+import { canDecode, decodeMp4, extractAudioCopy, isMp4 } from './demux'
 import { seekVideo, frameReady } from './media'
 /** مصدر الصورة: عنصر video (للمعاينة) أو VideoFrame (للتصدير الدقيق) مع زاوية التدوير */
 export interface Src { img: CanvasImageSource; w: number; h: number; rot: number }
@@ -18,6 +18,7 @@ export function makeVideoIO(video: HTMLVideoElement, file: File, start: number, 
       try { await decodeMp4(file, start, start + length, async (fr, t, rot) => { started = true; src = { img: fr, w: fr.displayWidth, h: fr.displayHeight, rot }; await emit(t) }, signal); return true }
       catch (e) { if (started || (e as Error).name === 'AbortError') throw e; return false } finally { src = null } } : undefined,
     seek: async (t: number) => { await seekVideo(video, start + t); await frameReady(video) },
+    audioCopy: mute || !isMp4(file) ? undefined : () => extractAudioCopy(file, start, start + length),
     audioLayers: mute ? undefined : async (): Promise<Layer[]> => [{ buf: await file.arrayBuffer(), vol: 1, offset: start }],
   }
 }

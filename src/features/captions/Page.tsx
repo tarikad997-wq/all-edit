@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useAccount } from '../../core/account'
+import { TextOpts, defaultTextOpts, postProcess } from '../../core/arabicText'
 import { Cap, fromChunks, parseSrt, toSrt } from '../../core/captions'
 import { W, H } from '../../core/exporter'
 import { loadFont } from '../../core/fonts'
@@ -26,13 +27,15 @@ export default function CaptionsPage({ active }: { active: boolean }) {
   const { acc } = useAccount()
   const [st, setSt] = useState<CapStyle>(() => { const s = load<CapStyle>('pp-capstyle', defaultStyle) as CapStyle & { karaoke?: boolean }; if (s.karaoke === false) s.wordFx = 'none'; return s })
   const [caps, setCaps] = useState<Cap[]>(() => { try { return JSON.parse(localStorage.getItem('pp-caps') || '[]') } catch { return [] } })
-  const [lang, setLang] = useState<Lang>('auto'), [quality, setQuality] = useState<Quality>('balanced')
+  const [lang, setLang] = useState<Lang>(() => (localStorage.getItem('pp-lang') as Lang) || 'auto'), [quality, setQuality] = useState<Quality>('balanced')
+  const [custom, setCustom] = useState(() => localStorage.getItem('pp-custommodel') ?? ''), [topts, setTopts] = useState<TextOpts>(() => load('pp-textopts', defaultTextOpts))
   const [file, setFile] = useState<File | null>(null), [url, setUrl] = useState(''), [vd, setVd] = useState(0), [start, setStart] = useState(0), [length, setLength] = useState(30)
   const [job, setJob] = useState<{ label: string; f?: number } | null>(null), [err, setErr] = useState('')
   const cv = useRef<HTMLCanvasElement>(null), vid = useRef<HTMLVideoElement>(null), abort = useRef<AbortController | null>(null), ex = useExport()
   const set = (p: Partial<CapStyle>) => setSt(x => ({ ...x, ...p }))
   const pl = usePlayer(length, { onPlay: t => { const v = vid.current; if (v) { v.currentTime = start + t; v.muted = false; v.play().catch(() => {}) } }, onPause: () => vid.current?.pause() })
   useEffect(() => { try { localStorage.setItem('pp-capstyle', JSON.stringify(st)); localStorage.setItem('pp-caps', JSON.stringify(caps)) } catch { /* */ } }, [st, caps])
+  useEffect(() => { try { localStorage.setItem('pp-lang', lang); localStorage.setItem('pp-custommodel', custom); localStorage.setItem('pp-textopts', JSON.stringify(topts)) } catch { /* */ } }, [lang, custom, topts])
   useEffect(() => { if (!active) pl.pause() }, [active])
   useEffect(() => { let off = false
     const draw = () => { if (!off && cv.current) drawCapFrame(cv.current.getContext('2d')!, st, acc, url ? fromVideo(vid.current) : null, caps, pl.tr.current) }
@@ -43,8 +46,8 @@ export default function CaptionsPage({ active }: { active: boolean }) {
   async function run() {
     if (!file) return; setErr(''); const ctl = new AbortController(); abort.current = ctl; setJob({ label: 'قراءة الصوت من الفيديو…' })
     try { const audio = await extractAudio(file, start, length); if (ctl.signal.aborted) return
-      const r = await transcribe(audio, { quality, language: lang, onStatus: (label, f) => setJob({ label, f }), signal: ctl.signal })
-      const out = fromChunks(r.chunks, r.wordLevel); setCaps(out); if (!out.length) setErr('لم يُسمع كلام واضح في هذا المقطع.'); else if (!r.wordLevel) setErr('تم التفريغ بتوقيت تقريبي للجمل (وليس لكل كلمة).')
+      const r = await transcribe(audio, { quality, language: lang, customModel: custom, onStatus: (label, f) => setJob({ label, f }), signal: ctl.signal })
+      const out = postProcess(fromChunks(r.chunks, r.wordLevel), { ...topts, dialect: topts.dialect || lang === 'ary' }); setCaps(out); if (!out.length) setErr('لم يُسمع كلام واضح في هذا المقطع.'); else if (!r.wordLevel) setErr('تم التفريغ بتوقيت تقريبي للجمل (وليس لكل كلمة).')
     } catch (e) { if ((e as Error).name !== 'AbortError') setErr('تعذّر التفريغ: ' + (e as Error).message + ' — تأكد من اتصالك بالإنترنت (التحميل الأول للنموذج فقط) ثم أعد المحاولة، أو استورد ملف SRT / اكتب الكابشن يدوياً.') }
     finally { setJob(null) }
   }
@@ -67,8 +70,10 @@ export default function CaptionsPage({ active }: { active: boolean }) {
         <div className="seg"><button className={st.fit === 'cover' ? 'on' : ''} onClick={() => set({ fit: 'cover' })}>ملء الشاشة</button><button className={st.fit === 'contain' ? 'on' : ''} onClick={() => set({ fit: 'contain' })}>الفيديو كاملاً</button></div>
       </Card>
       <Card title="٢ — كتابة الكابشن تلقائياً">
-        <div className="grid2"><Field label="لغة الكلام"><select value={lang} onChange={e => setLang(e.target.value as Lang)}><option value="auto">تلقائي (عربي / English)</option><option value="ar">العربية</option><option value="en">English</option></select></Field>
-          <Field label="الجودة"><select value={quality} onChange={e => setQuality(e.target.value as Quality)}>{Object.entries(MODELS).map(([k, v]) => <option key={k} value={k}>{v.label} — {v.size}</option>)}</select></Field></div>
+        <div className="grid2"><Field label="لغة الكلام"><select value={lang} onChange={e => { const v = e.target.value as Lang; setLang(v); if (v === 'ary') { setTopts(o => ({ ...o, dialect: true })); setQuality(q => q === 'fast' ? 'best' : q) } }}><option value="auto">تلقائي (عربي / English / Français)</option><option value="ar">العربية (فصحى ولهجات)</option><option value="ary">الدارجة المغربية</option><option value="en">English</option><option value="fr">Français</option></select></Field>
+          <Field label="الجودة"><select value={quality} onChange={e => setQuality(e.target.value as Quality)}>{Object.entries(MODELS).map(([k, v]) => <option key={k} value={k}>{v.label} — {v.size}</option>)}<option value="custom">نموذج مخصص (ONNX)</option></select></Field></div>
+        {quality === 'custom' && <Field label="اسم النموذج على Hugging Face"><input dir="ltr" value={custom} placeholder="username/whisper-small-darija-onnx" onChange={e => setCustom(e.target.value)} /></Field>}
+        {lang === 'ary' && <p className="note">الدارجة المغربية: Whisper لا يملك لغة مخصّصة لها، فيكتبها كعربية. للدقة الأعلى اختر «دقيق»، أو أدخل نموذجاً مدرَّباً على الدارجة بصيغة ONNX (انظر الدليل)، ثم صحّح الكلمات المتكررة عبر «قاموس التصحيح» أدناه.</p>}
         {job ? <div className="stack"><div className="bar"><div style={{ width: job.f != null ? job.f * 100 + '%' : '100%', opacity: job.f != null ? 1 : .35 }} /><span>{job.label}{job.f != null ? ` ${Math.round(job.f * 100)}%` : ''}</span></div><button className="btn danger" onClick={() => abort.current?.abort()}>إلغاء</button></div>
           : <button className="btn primary big" disabled={!file} onClick={run}>✨ ابدأ كتابة الكابشن</button>}
         <p className="muted">يعمل على جهازك: صوتك لا يُرفع لأي خادم. يحتاج إنترنت في أول مرة فقط لتحميل النموذج، ثم يُحفظ في المتصفح.</p>
@@ -76,11 +81,19 @@ export default function CaptionsPage({ active }: { active: boolean }) {
         <div className="row"><label className="btn">📥 استيراد SRT<input type="file" accept=".srt,text/plain" hidden onChange={async e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) { const c = parseSrt(await f.text()); if (c.length) setCaps(c); else setErr('الملف لا يحتوي كابشن صالحاً.') } }} /></label>
           <button className="btn" disabled={!caps.length} onClick={() => dl('captions.srt', toSrt(caps))}>📤 تنزيل SRT</button></div>
       </Card>
+      <Card title="نص عربي ودارجة">
+        <label className="check"><input type="checkbox" checked={topts.dialect} onChange={e => setTopts(o => ({ ...o, dialect: e.target.checked }))} /> توحيد تهجئة الدارجة المغربية (دبا ← دابا، بزااااف ← بزاف…)</label>
+        <Field label="الأرقام"><div className="seg">{([['western', '123'], ['arabic', '١٢٣']] as const).map(([k, l]) => <button key={k} className={topts.digits === k ? 'on' : ''} onClick={() => setTopts(o => ({ ...o, digits: k }))}>{l}</button>)}</div></Field>
+        <Field label="التشكيل"><div className="seg">{([['remove', 'إزالة'], ['keep', 'إبقاء']] as const).map(([k, l]) => <button key={k} className={topts.diacritics === k ? 'on' : ''} onClick={() => setTopts(o => ({ ...o, diacritics: k }))}>{l}</button>)}</div></Field>
+        <Field label="قاموس التصحيح (سطر لكل كلمة: الخطأ=الصح)"><textarea rows={4} value={topts.glossary} placeholder={'مروك=المغرب\nواش كاين=واش كاين شي'} onChange={e => setTopts(o => ({ ...o, glossary: e.target.value }))} /></Field>
+        <button className="btn" disabled={!caps.length} onClick={() => setCaps(cs => postProcess(cs, topts))}>🪄 تطبيق على النص الحالي</button>
+        <p className="muted">يُحذف تلقائياً ما يختلقه Whisper عند الصمت (مثل «ترجمة نانسي قنقر»)، وتُصحَّح علامات الترقيم العربية.</p>
+      </Card>
       <Card title={`٣ — النص والتوقيت (${caps.length})`} action={<button className="btn primary sm" onClick={() => add()}>＋ سطر</button>}>
         {!caps.length && <p className="muted">لا يوجد كابشن بعد. ابدأ الكتابة التلقائية أو أضف سطراً يدوياً.</p>}
         {caps.map((c, i) => <div key={c.id} className={'item' + (cur?.id === c.id ? ' cur' : '')}>
           <div className="item-h"><b className="badge" onClick={() => pl.seek(c.s)} style={{ cursor: 'pointer' }}>{i + 1}</b><span className="grow" />
-            <button className="btn sm" onClick={() => add(i)}>＋</button><button className="btn sm danger" onClick={() => setCaps(cs => cs.filter(x => x.id !== c.id))}>🗑</button></div>
+            <button className="btn sm" aria-label="إضافة سطر بعد هذا السطر" onClick={() => add(i)}>＋</button><button className="btn sm danger" aria-label="حذف السطر" onClick={() => setCaps(cs => cs.filter(x => x.id !== c.id))}>🗑</button></div>
           <textarea rows={2} value={c.text} onChange={e => upd(c.id, { text: e.target.value })} />
           <div className="grid2"><Field label="من (ث)"><input type="number" step=".1" min="0" value={+c.s.toFixed(2)} onChange={e => upd(c.id, { s: Math.max(0, +e.target.value || 0) })} /></Field>
             <Field label="إلى (ث)"><input type="number" step=".1" min="0" value={+c.e.toFixed(2)} onChange={e => upd(c.id, { e: Math.max(c.s + .1, +e.target.value || 0) })} /></Field></div>

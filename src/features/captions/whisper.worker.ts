@@ -2,23 +2,33 @@
 import { pipeline, env } from '@huggingface/transformers'
 // يعمل في خيط منفصل حتى لا تتجمد الواجهة أثناء التفريغ
 env.allowLocalModels = false
-;(env.backends.onnx.wasm as any).wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.31.0-dev.20260914-8d85527a0/dist/'
-let asr: any = null, loaded = ''
+let asr: any = null, loaded = '', loadedDevice = '', ortReady = false
 const post = (m: unknown) => (self as unknown as Worker).postMessage(m)
-async function load(ids: string[]) {
-  if (asr && ids.includes(loaded)) return
-  const gpu = !!(navigator as any).gpu; let last: unknown = new Error('تعذّر تحميل النموذج')
-  const attempts: any[] = [...(gpu ? [{ device: 'webgpu', dtype: { encoder_model: 'fp32', decoder_model_merged: 'q4' } }] : []), { device: 'wasm', dtype: 'q8' }, { device: 'wasm', dtype: 'fp32' }]
+/** يجمّع أجزاء ملف WASM من نفس الموقع ويمرّره لمحرك ONNX مباشرة (بدون CDN وبدون ملف واحد كبير) */
+async function setupOrt(base: string) {
+  if (ortReady) return
+  const man = await (await fetch(base + 'manifest.json', { cache: 'no-cache' })).json()
+  post({ type: 'status', text: 'تجهيز محرك الذكاء الاصطناعي…' })
+  const bufs = await Promise.all((man.parts as string[]).map(p => fetch(base + p).then(r => { if (!r.ok) throw new Error('تعذّر تحميل ملف المحرك ' + p); return r.arrayBuffer() })))
+  const bytes = new Uint8Array(man.size); let o = 0; for (const b of bufs) { bytes.set(new Uint8Array(b), o); o += b.byteLength }
+  const mjs = URL.createObjectURL(new Blob([await (await fetch(base + man.mjs)).text()], { type: 'text/javascript' }))
+  const w = (env as any).backends.onnx.wasm; w.wasmBinary = bytes; w.wasmPaths = { mjs }
+  ortReady = true
+}
+async function load(ids: string[], device: 'webgpu' | 'wasm') {
+  if (asr && ids.includes(loaded) && loadedDevice === device) return
+  let last: unknown = new Error('تعذّر تحميل النموذج')
+  const attempts: any[] = device === 'webgpu' ? [{ device: 'webgpu', dtype: { encoder_model: 'fp32', decoder_model_merged: 'q4' } }] : [{ device: 'wasm', dtype: 'q8' }, { device: 'wasm', dtype: 'fp32' }]
   for (const id of ids) for (const opt of attempts) {
-    try { asr = await (pipeline as any)('automatic-speech-recognition', id, { ...opt, progress_callback: (p: any) => post({ type: 'progress', ...p }) }); loaded = id; post({ type: 'model', id, device: opt.device }); return }
+    try { asr = await (pipeline as any)('automatic-speech-recognition', id, { ...opt, progress_callback: (p: any) => post({ type: 'progress', ...p }) }); loaded = id; loadedDevice = device; post({ type: 'model', id, device: opt.device }); return }
     catch (e) { last = e; asr = null }
   }
   throw last
 }
-self.onmessage = async (e: MessageEvent<{ audio: Float32Array; ids: string[]; language: string | null }>) => {
+self.onmessage = async (e: MessageEvent<{ audio: Float32Array; ids: string[]; language: string | null; device: 'webgpu' | 'wasm'; ortBase: string }>) => {
   try {
-    const { audio, ids, language } = e.data
-    await load(ids); post({ type: 'status', text: 'جارٍ كتابة الكابشن…' })
+    const { audio, ids, language, device, ortBase } = e.data
+    await setupOrt(ortBase); await load(ids, device); post({ type: 'status', text: 'جارٍ كتابة الكابشن…' })
     const base: any = { task: 'transcribe', chunk_length_s: 29, stride_length_s: 5, ...(language ? { language } : {}) }
     let out: any, wordLevel = true
     try { out = await asr(audio, { ...base, return_timestamps: 'word' }) } catch { out = await asr(audio, { ...base, return_timestamps: true }); wordLevel = false }

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import PastPresentPage from './features/past-present/Page'
 import ReelFormPage from './features/reel-form/Page'
 import CaptionsPage from './features/captions/Page'
@@ -9,8 +9,10 @@ import AccountPage from './features/account/Page'
 const TABS = [['pp', '🎬', 'الماضي والحاضر'], ['reel', '📱', 'نموذج الريلز'], ['cap', '💬', 'الكابشن'], ['thumb', '🖼', 'الأغلفة'], ['acc', '👤', 'الحساب']] as const
 type Tab = typeof TABS[number][0]
 export default function App() {
-  const [tab, setTab] = useState<Tab>(() => (localStorage.getItem('pp-tab') as Tab) || 'pp')
+  const valid = (h: string): Tab | null => (TABS.find(t => t[0] === h.replace('#', ''))?.[0] as Tab) ?? null
+  const [tab, setTab] = useState<Tab>(() => valid(location.hash) ?? (localStorage.getItem('pp-tab') as Tab) ?? 'pp')
   const go = (t: Tab) => { setTab(t); localStorage.setItem('pp-tab', t); window.scrollTo(0, 0) }
+  useEffect(() => { const h = () => { const t = valid(location.hash); if (t) go(t) }; addEventListener('hashchange', h); return () => removeEventListener('hashchange', h) }, [])
   const show = (t: Tab) => ({ hidden: tab !== t })
   return <div className="shell">
     <header className="top"><h1 className="brand"><LogoMark size={38} /><Wordmark /></h1>

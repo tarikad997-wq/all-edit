@@ -8,7 +8,9 @@ export function textWords(text: string, s: number, e: number): Word[] {
   return ws.map(w => { const d = (e - s) * (w.length + 1) / total, r = { w, s: t, e: t + d }; t += d; return r })
 }
 export const wordsOf = (c: Cap) => (c.words?.length ? c.words : textWords(c.text, c.s, c.e))
-export function groupWords(words: Word[], o = { maxChars: 30, maxWords: 7, gap: 0.6 }): Cap[] {
+export function groupWords(words: Word[], o0?: { maxChars: number; maxWords: number; gap: number }): Cap[] {
+  const arabic = words.filter(w => isArabic(w.w)).length > words.length / 2
+  const o = o0 ?? (arabic ? { maxChars: 26, maxWords: 6, gap: 0.6 } : { maxChars: 32, maxWords: 7, gap: 0.6 })
   const out: Cap[] = []; let cur: Word[] = [], chars = 0
   const flush = () => { if (!cur.length) return; out.push({ id: uid(), s: cur[0].s, e: cur[cur.length - 1].e, text: cur.map(w => w.w).join(' '), words: cur }); cur = []; chars = 0 }
   for (const w of words) {
@@ -17,6 +19,8 @@ export function groupWords(words: Word[], o = { maxChars: 30, maxWords: 7, gap: 
     cur.push(w); chars += w.w.length + 1
   }
   flush()
+  // لا تترك كلمة قصيرة وحدها في سطر: ادمجها مع السابق إن اتسع
+  for (let i = out.length - 1; i > 0; i--) { const a = out[i - 1], b = out[i]; if ((b.words?.length ?? 0) === 1 && b.text.length <= 4 && a.text.length + 1 + b.text.length <= o.maxChars + 6 && b.s - a.e < o.gap) { a.text += ' ' + b.text; a.words = [...(a.words ?? []), ...(b.words ?? [])]; a.e = b.e; out.splice(i, 1) } }
   // أطِل ظهور كل سطر قليلاً حتى بداية التالي لتقليل الوميض
   out.forEach((c, i) => { const next = out[i + 1]; c.e = Math.max(c.e, Math.min(next ? next.s : c.e + .35, c.e + .35)) })
   return out

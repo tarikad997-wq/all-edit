@@ -38,8 +38,11 @@ export function shadowText(ctx: CanvasRenderingContext2D, text: string, y: numbe
 }
 type Tok = { w: string; hl: boolean; x: number }
 function wrapTokens(ctx: CanvasRenderingContext2D, words: string[], maxW: number) {
-  const sp = ctx.measureText(' ').width, out: Tok[][] = []; let cur: Tok[] = [], width = 0
-  for (const raw of words) { const hl = /^\*.+\*$/.test(raw), w = hl ? raw.slice(1, -1) : raw, m = ctx.measureText(w).width
+  const sp = ctx.measureText(' ').width, out: Tok[][] = []; let cur: Tok[] = [], width = 0, on = false
+  for (const r0 of words) {
+    // *كلمة* أو *عدة كلمات* تُلوَّن بلون التمييز
+    let raw = r0, hl = on; if (raw.startsWith('*')) { on = true; hl = true; raw = raw.slice(1) } if (raw.endsWith('*')) { raw = raw.slice(0, -1); on = false; hl = true }
+    if (!raw) continue; const w = raw, m = ctx.measureText(w).width
     if (cur.length && width + sp + m > maxW) { out.push(cur); cur = []; width = 0 }
     cur.push({ w, hl, x: m }); width += (cur.length > 1 ? sp : 0) + m }
   if (cur.length) out.push(cur); return out

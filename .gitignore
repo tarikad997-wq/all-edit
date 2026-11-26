@@ -1,4 +1,9 @@
-node_modules/
+public/ort/
 dist/
-.env
-.env.local
+node_modules/
+*.local
+.DS_Store
+.wrangler/
+public/privacy.html
+public/terms.html
+public/licenses.html

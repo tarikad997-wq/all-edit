@@ -61,7 +61,7 @@ export default function ReelFormPage({ active }: { active: boolean }) {
       </Card>
       <Card title="العنوان">
         <Field label="عنوان الفيديو"><textarea rows={2} value={f.title} onChange={e => set({ title: e.target.value })} /></Field>
-        <p className="muted">لتلوين كلمة ضعها بين نجمتين: *مفاجأة*</p>
+        <p className="muted">لتلوين كلمة أو أكثر ضعها بين نجمتين: *مفاجأة*</p>
         <FontPicker value={f.font} onChange={id => set({ font: id })} />
       </Card>
       <Card title="الافكتات ✨">

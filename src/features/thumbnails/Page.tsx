@@ -37,7 +37,7 @@ export default function ThumbnailsPage() {
         <ImagePick label="الصورة" value={t.img} onChange={s => set({ img: s })} max={2200} size={110} />
         <Field label="الوسم"><input value={t.tag} onChange={e => set({ tag: e.target.value })} /></Field>
         <Field label="العنوان"><textarea rows={3} value={t.title} onChange={e => set({ title: e.target.value })} /></Field>
-        <p className="muted">لتلوين كلمة ضعها بين نجمتين: *عاجل*</p>
+        <p className="muted">لتلوين كلمة أو أكثر ضعها بين نجمتين: *عاجل*</p>
         <Field label="السطر الثانوي (المصدر / السنة / القائل)"><input value={t.sub} onChange={e => set({ sub: e.target.value })} /></Field>
         <p className="muted">اسم الصفحة والصورة والشعار من تبويب «الحساب».</p></Card>
       <Card title="الخط والألوان والافكتات">

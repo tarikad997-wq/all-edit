@@ -112,5 +112,5 @@ export function makeReelScene(f: ReelForm, acc: Account, video: HTMLVideoElement
   const io = makeVideoIO(video, file, f.start, f.length, f.mute)
   return { duration: f.length,
     prepare: async () => { await ensureFonts(); await loadFont(f.font, f.title); await loadImgs([acc.profileImg, acc.logoImg]); await io.prepare() },
-    draw: (ctx, t) => drawReel(ctx, f, acc, io.current(), t), play: io.play, seek: io.seek, audioLayers: io.audioLayers }
+    draw: (ctx, t) => drawReel(ctx, f, acc, io.current(), t), play: io.play, seek: io.seek, audioCopy: io.audioCopy, audioLayers: io.audioLayers }
 }

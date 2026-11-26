@@ -70,3 +70,38 @@ export async function decodeMp4(file: File, start: number, end: number, onFrame:
   if (d && !finished) { await d.flush(); await drain() }
   check(); try { d?.close() } catch { /* */ } pending.forEach(f => f.close())
 }
+
+// ---------- نسخ مسار الصوت كما هو (بدون فك ترميز أو إعادة ترميز): أسرع وأخف على الهاتف، ولا يحتاج مرمّز AAC ----------
+export interface AudioCopy { sampleRate: number; channels: number; description: Uint8Array; chunks: { data: Uint8Array; ts: number; dur: number }[] }
+function findAsc(o: any, depth = 0): Uint8Array | null { // eslint-disable-line @typescript-eslint/no-explicit-any
+  if (!o || depth > 7) return null
+  if (o.tag === 5 && o.data instanceof Uint8Array) return o.data
+  for (const k of ['esd', 'descs']) { const v = o[k]; for (const x of Array.isArray(v) ? v : v ? [v] : []) { const r = findAsc(x, depth + 1); if (r) return r } }
+  return null
+}
+/** يرجع null إن لم يكن الملف MP4/MOV بصوت AAC (عندها يُستخدم المسار البديل) */
+export async function extractAudioCopy(file: File, start: number, end: number): Promise<AudioCopy | null> {
+  if (!isMp4(file)) return null
+  const mp4 = MP4Box.createFile(); let track: any, desc: Uint8Array | null = null, err: unknown = null // eslint-disable-line @typescript-eslint/no-explicit-any
+  const chunks: AudioCopy['chunks'] = []
+  mp4.onError = (e: unknown) => { err = e }
+  mp4.onReady = (info: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+    try {
+      track = info.audioTracks?.[0]; if (!track || !/^mp4a\.40\.(2|5|29)$/.test(track.codec)) { track = null; return }
+      desc = findAsc(mp4.getTrackById(track.id).mdia.minf.stbl.stsd.entries[0].esds)
+      mp4.setExtractionOptions(track.id, null, { nbSamples: 500 }); mp4.start()
+    } catch (e) { err = e }
+  }
+  mp4.onSamples = (_i: number, _u: unknown, samples: any[]) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+    for (const s of samples) { const t = s.cts / s.timescale, du = s.duration / s.timescale; if (t + du <= start || t >= end) continue
+      chunks.push({ data: new Uint8Array(s.data), ts: Math.max(0, Math.round((t - start) * 1e6)), dur: Math.round(du * 1e6) }) }
+  }
+  const CH = 4 * 1024 * 1024; let pos = 0, guard = 0
+  while (pos < file.size && guard++ < 100000 && !err) {
+    const buf: any = await file.slice(pos, pos + CH).arrayBuffer(); buf.fileStart = pos // eslint-disable-line @typescript-eslint/no-explicit-any
+    const next = mp4.appendBuffer(buf); pos = typeof next === 'number' ? next : pos + buf.byteLength
+  }
+  mp4.flush()
+  if (err || !track || !desc || !chunks.length) return null
+  return { sampleRate: track.audio.sample_rate, channels: track.audio.channel_count, description: desc, chunks }
+}

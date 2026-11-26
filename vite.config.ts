@@ -1,44 +1,5 @@
-
-import { defineConfig } from 'vite'
+import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
-
-const onnxWasmCdn =
-  'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.31.0-dev.20260914-8d85527a0/dist/'
-
-export default defineConfig({
-  base: './',
-  plugins: [
-    react(),
-    {
-      name: 'onnx-wasm-cdn',
-      enforce: 'post',
-
-      generateBundle(_options, bundle) {
-        for (const [fileName, output] of Object.entries(bundle)) {
-          if (
-            output.type !== 'asset' ||
-            !fileName.includes('ort-wasm-simd-threaded') ||
-            !fileName.endsWith('.wasm')
-          ) {
-            continue
-          }
-
-          const fileBase = fileName.split('/').pop()!
-
-          for (const item of Object.values(bundle)) {
-            if (item.type === 'chunk') {
-              item.code = item.code
-                .split(fileName).join(onnxWasmCdn + 'ort-wasm-simd-threaded.asyncify.wasm')
-                .split(fileBase).join('ort-wasm-simd-threaded.asyncify.wasm')
-            }
-          }
-
-          delete bundle[fileName]
-        }
-      },
-    },
-  ],
-  worker: {
-    format: 'es',
-  },
-})
+// يمنع Vite من نسخ ملف ONNX WASM الكامل (≈25.6MB) إلى dist؛ يُحمَّل بدلاً منه مقسّماً من /ort (انظر scripts/prepare-ort.mjs)
+const dropWasm = (): Plugin => ({ name: 'drop-wasm', generateBundle(_o, bundle) { for (const k of Object.keys(bundle)) if (k.endsWith('.wasm')) delete bundle[k] } })
+export default defineConfig({ base: './', plugins: [react(), dropWasm()], worker: { format: 'es', plugins: () => [dropWasm()] } })

@@ -1,2 +1,108 @@
-{"id":"./","name":"All Edit — صانع الفيديو والأغلفة","short_name":"All Edit","description":"صناعة فيديوهات Reels وأغلفة المنشورات بالعربية","lang":"ar","dir":"rtl","start_url":"./","scope":"./","display":"standalone","background_color":"#0a0e1a","theme_color":"#0a0e1a",
-"icons":[{"src":"icons/icon-192.png","sizes":"192x192","type":"image/png"},{"src":"icons/icon-512.png","sizes":"512x512","type":"image/png"},{"src":"icons/maskable-512.png","sizes":"512x512","type":"image/png","purpose":"maskable"}]}
+{
+ "id": "./",
+ "name": "All Edit — صانع الفيديو والأغلفة",
+ "short_name": "All Edit",
+ "description": "صناعة فيديوهات الريلز وأغلفة المنشورات وكتابة الكابشن بالعربية والدارجة والإنجليزية — كل شيء على جهازك.",
+ "lang": "ar",
+ "dir": "rtl",
+ "start_url": "./",
+ "scope": "./",
+ "display": "standalone",
+ "display_override": [
+  "standalone",
+  "minimal-ui"
+ ],
+ "background_color": "#0a0e1a",
+ "theme_color": "#0a0e1a",
+ "categories": [
+  "video",
+  "photo",
+  "productivity"
+ ],
+ "prefer_related_applications": false,
+ "icons": [
+  {
+   "src": "icons/icon-192.png",
+   "sizes": "192x192",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "icons/icon-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "icons/maskable-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "maskable"
+  }
+ ],
+ "shortcuts": [
+  {
+   "name": "نموذج الريلز",
+   "short_name": "الريلز",
+   "url": "./#reel",
+   "icons": [
+    {
+     "src": "icons/icon-192.png",
+     "sizes": "192x192"
+    }
+   ]
+  },
+  {
+   "name": "كتابة الكابشن",
+   "short_name": "الكابشن",
+   "url": "./#cap",
+   "icons": [
+    {
+     "src": "icons/icon-192.png",
+     "sizes": "192x192"
+    }
+   ]
+  },
+  {
+   "name": "صانع الأغلفة",
+   "short_name": "الأغلفة",
+   "url": "./#thumb",
+   "icons": [
+    {
+     "src": "icons/icon-192.png",
+     "sizes": "192x192"
+    }
+   ]
+  }
+ ],
+ "screenshots": [
+  {
+   "src": "screenshots/pp.png",
+   "sizes": "1080x1920",
+   "type": "image/png",
+   "form_factor": "narrow",
+   "label": "الماضي والحاضر"
+  },
+  {
+   "src": "screenshots/reel.png",
+   "sizes": "1080x1920",
+   "type": "image/png",
+   "form_factor": "narrow",
+   "label": "نموذج الريلز"
+  },
+  {
+   "src": "screenshots/captions.png",
+   "sizes": "1080x1920",
+   "type": "image/png",
+   "form_factor": "narrow",
+   "label": "كتابة الكابشن"
+  },
+  {
+   "src": "screenshots/thumb.png",
+   "sizes": "1080x1920",
+   "type": "image/png",
+   "form_factor": "narrow",
+   "label": "الأغلفة"
+  }
+ ]
+}

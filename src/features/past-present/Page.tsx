@@ -71,9 +71,9 @@ export default function PastPresentPage({ active }: { active: boolean }) {
       <Card title={`الممثلون (${p.actors.length})`} action={<button className="btn primary" onClick={() => upd({ actors: [...p.actors, newActor()] })}>＋ إضافة</button>}>
         {p.actors.map((a, i) => { const age = calcAge(a.birth, a.death); return <div className="item" key={a.id}>
           <div className="item-h"><b className="badge">{i + 1}</b><span className="grow" />
-            <button className="btn sm" onClick={() => move(i, -1)}>▲</button><button className="btn sm" onClick={() => move(i, 1)}>▼</button>
-            <button className="btn sm" onClick={() => upd({ actors: [...p.actors.slice(0, i + 1), { ...a, id: uid() }, ...p.actors.slice(i + 1)] })}>⧉</button>
-            <button className="btn sm danger" onClick={() => upd({ actors: p.actors.filter(x => x.id !== a.id) })}>🗑</button></div>
+            <button className="btn sm" aria-label="نقل لأعلى" onClick={() => move(i, -1)}>▲</button><button className="btn sm" aria-label="نقل لأسفل" onClick={() => move(i, 1)}>▼</button>
+            <button className="btn sm" aria-label="نسخ الممثل" onClick={() => upd({ actors: [...p.actors.slice(0, i + 1), { ...a, id: uid() }, ...p.actors.slice(i + 1)] })}>⧉</button>
+            <button className="btn sm danger" aria-label="حذف الممثل" onClick={() => upd({ actors: p.actors.filter(x => x.id !== a.id) })}>🗑</button></div>
           <div className="row"><ImagePick label="الماضي" value={a.oldImg} onChange={s => setActor(a.id, { oldImg: s })} size={96} /><ImagePick label="الحاضر" value={a.newImg} onChange={s => setActor(a.id, { newImg: s })} size={96} />
             <div className="stack grow"><input value={a.name} placeholder="اسم الممثل" onChange={e => setActor(a.id, { name: e.target.value })} /><span className="muted">{age !== null ? `العمر: ${age}` : 'أدخل تاريخ الميلاد'}</span></div></div>
           <div className="grid2"><Field label="الميلاد"><input dir="ltr" value={a.birth} placeholder="1960 أو 1960-05-20" onChange={e => setActor(a.id, { birth: e.target.value })} /></Field>
@@ -83,8 +83,8 @@ export default function PastPresentPage({ active }: { active: boolean }) {
       </Card>
       <Card title="القوائم المحفوظة">
         <div className="row"><button className="btn" onClick={save}>💾 حفظ القائمة الحالية</button>
-          <select className="grow" value="" onChange={async e => { const v = e.target.value; if (v) { const l = await loadList<Project>(v); if (l) setP({ ...l, actors: l.actors ?? [] }) } }}><option value="">📂 تحميل قائمة…</option>{names.map(n => <option key={n}>{n}</option>)}</select>
-          <button className="btn danger" onClick={async () => { const n = prompt('اسم القائمة المراد حذفها:'); if (n) { await deleteList(n); setNames(await listNames()) } }}>🗑</button></div>
+          <select className="grow" aria-label="تحميل قائمة محفوظة" value="" onChange={async e => { const v = e.target.value; if (v) { const l = await loadList<Project>(v); if (l) setP({ ...l, actors: l.actors ?? [] }) } }}><option value="">📂 تحميل قائمة…</option>{names.map(n => <option key={n}>{n}</option>)}</select>
+          <button className="btn danger" aria-label="حذف قائمة محفوظة" onClick={async () => { const n = prompt('اسم القائمة المراد حذفها:'); if (n) { await deleteList(n); setNames(await listNames()) } }}>🗑</button></div>
         {note && <p className="note">{note}</p>}
       </Card>
     </div></div>
